@@ -15,6 +15,9 @@ const appendLogClock = (domElement, clockData) => {
         `
     ));
     domElement.appendChild(par);
+    domElement
+    if(domElement.childElementCount >25)
+        domElement.removeChild(domElement.getElementsByTagName('p')[0]);
     domElement.scrollTop = domElement.scrollHeight;
 }
 

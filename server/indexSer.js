@@ -10,7 +10,7 @@ const serverInfo = {
     port: args.port
 }
 
-import { updateClockDom } from '../common/utils.js';
+import { updateClockDom, appendLogClock } from '../common/utils.js';
 import Db from "./db.js";
 
 var mainClockWorker;
