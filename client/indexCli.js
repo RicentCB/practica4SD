@@ -10,6 +10,7 @@ const BookInfoContainer = document.querySelector('#book-container');
 
 var clock;
 var socket;
+var thisClock;
 
 export default function main() {
     initClock();
@@ -31,6 +32,7 @@ function initClock() {
     clock = new Worker('../common/worker.js', { type: "module" });
     //Incializar reloj
     clock.onmessage = e => {
+        thisClock = e.data;
         updateClockDom(document.querySelector('.clock'), e.data);
         //Actualizar log de hora
         if(lastSec != e.data?.seconds){
@@ -61,6 +63,14 @@ function configSocket() {
                 confirmButtonText: 'Cerrar'
             });
             BookInfoContainer.querySelector('#btn-request-book').addEventListener('click', requestBookHdl);
+        } else if (msg?.type === 'timerequest'){
+            console.log("Time requested");
+            //let response = {
+            //    type: "timeresponse",
+            //};
+            thisClock.type = "timeresponse";
+            //console.log(thisClock);
+            socket.write(JSON.stringify(thisClock));
         }
     };
     let endCallback = () => {

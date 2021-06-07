@@ -14,9 +14,12 @@ import { updateClockDom, appendLogClock } from '../common/utils.js';
 import Db from "./db.js";
 
 var mainClockWorker;
+var thisClock;
 var peers = [];
 var server;
 var db;
+
+var time_responses = [];
 
 export default function main() {
     db = new Db(args.uri, args.db);
@@ -30,6 +33,7 @@ function initClock() {
     mainClockWorker = new Worker('../common/worker.js', { type: "module" });
     //Reloj Maestro
     mainClockWorker.onmessage = e => {
+        thisClock = e.data;
         updateClockDom(document.querySelector(".clock"), e.data);
         //Actualizar log de hora
         if(lastSec != e.data?.seconds){
@@ -168,7 +172,15 @@ function handleIncomingData(conn, data) {
         db.setBorrowedBook(msg.info.book.isbn).catch(console.error);
         db.logRequest(msg.info.origin, msg.info.book.isbn).catch(console.error);
         fillInfoBook(book);
-    }
+    } else if(msg?.type === "timerequest"){
+        conn.write(JSON.stringify(thisClock));
+        //TODOm send to all peers
+        sendToAllPeers({type: "timerequest"});
+        // modificar los clientes
+    } else if(msg?.type === "timeresponse"){
+        console.log("Hora recibida");
+        console.log(JSON.stringify(msg));
+    }   
 }
 
 function initServer() {

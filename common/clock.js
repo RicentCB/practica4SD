@@ -33,6 +33,11 @@ export default class Clock {
             millis: millis
         };
     }
+
+    get millis() {
+        return this._millis
+    };
+
     set time(newTime) {
         newTime.hours = mod(newTime.hours, 24);
         newTime.mins = mod(newTime.mins, 60);
