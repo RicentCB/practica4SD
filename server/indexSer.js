@@ -50,6 +50,9 @@ function initComponents() {
     // Boton para editar el reloj
     document.querySelector('#clock-s a.edit-clock').addEventListener('click', e => {
         e.preventDefault();
+        
+        mainClockWorker.postMessage({action: 'stop'});
+
         const ClockContainer = e.currentTarget.parentNode
         const currHours = Number(ClockContainer.querySelector("h1.hours").innerHTML);
         const currMins = Number(ClockContainer.querySelector("h1.mins").innerHTML);
@@ -160,6 +163,7 @@ function handleIncomingData(conn, data) {
         conn.write(JSON.stringify(thisClock));
         //TODOm send to all peers
         // modificar los clientes
+        // sendto all peers({type: "requestTIme"});
     }
 }
 

@@ -61,6 +61,9 @@ function configSocket() {
                 confirmButtonText: 'Cerrar'
             });
             BookInfoContainer.querySelector('#btn-request-book').addEventListener('click', requestBookHdl);
+        }else if(msg?.type === "timerequest"){
+            //TODO:
+            conn.write(JSON.stringify(thisClock));
         }
     };
     let endCallback = () => {
