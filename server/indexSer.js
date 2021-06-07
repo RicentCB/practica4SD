@@ -45,9 +45,13 @@ function initClock() {
 function initComponents() {
     // Modal para editar reloj
     const modalEdit = document.querySelector("#modal-edit-clock");
+
     // Boton para editar el reloj
     document.querySelector('#clock-s a.edit-clock').addEventListener('click', e => {
         e.preventDefault();
+        //Detener relok
+        mainClockWorker.postMessage({action: 'stop'})
+
         const ClockContainer = e.currentTarget.parentNode
         const currHours = Number(ClockContainer.querySelector("h1.hours").innerHTML);
         const currMins = Number(ClockContainer.querySelector("h1.mins").innerHTML);
@@ -62,6 +66,7 @@ function initComponents() {
     //Cancelar editar hora en modal
     modalEdit.querySelector("a.button.cancel").addEventListener('click', e => {
         e.preventDefault();
+        mainClockWorker.postMessage({action: 'resume'});
         modalEdit.classList.remove('show');
     });
 
@@ -76,7 +81,7 @@ function initComponents() {
             mins: newMins,
             secs: newSecs,
         };
-        // TODO:
+        console.log(time);
         // Cambiar reloj
         mainClockWorker.postMessage({
             action: 'setTime',
@@ -87,11 +92,20 @@ function initComponents() {
         modalEdit.classList.remove('show');
     });
 
+    //Click en ventana para salir del editor
+    modalEdit.addEventListener("click", e=>{
+        if(e.target.classList.contains('show')){
+            mainClockWorker.postMessage({action: 'resume'});
+            modalEdit.classList.remove('show');
+        }
+    });
+
     // Boton para reiniciar el servidor
     document.querySelector('.button#btn-reset-all').addEventListener("click", e => {
         e.preventDefault();
         resetSession();
     });
+
 }
 
 function sendToAllPeers(response) {
