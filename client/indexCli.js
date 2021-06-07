@@ -29,7 +29,7 @@ function bindButtons() {
 let lastSec=0;
 function initClock() {
     clock = new Worker('../common/worker.js', { type: "module" });
-    //Reloj Cliente
+    //Incializar reloj
     clock.onmessage = e => {
         updateClockDom(document.querySelector('.clock'), e.data);
         //Actualizar log de hora
