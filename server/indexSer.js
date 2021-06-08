@@ -1,3 +1,4 @@
+
 const net = require('net');
 const Swal = require('sweetalert2');
 const { remote } = require('electron');
@@ -262,7 +263,7 @@ function initServer() {
                 handleIncomingData(socket, buf);
             });
             socket.on('error', err => {
-                if (err.code === 'ECONNREFUSED') {
+                if (err.name === 'ECONNREFUSED') {
                     console.log(`peer ${peerInfo} not available`);
                 }
             });
@@ -295,7 +296,7 @@ function initServer() {
                 }
             });
             c.on('error', err => {
-                if (err.code !== 'ECONNRESET') {
+                if (err.name !== 'ECONNRESET') {
                     console.error(err);
                 }
             });
@@ -303,7 +304,7 @@ function initServer() {
             peers.push(c);
         });
         server.on('error', (err) => {
-            if (err.code === 'EADDRINUSE') {
+            if (err.name === 'EADDRINUSE') {
                 console.log('Address in use, retrying...');
                 setTimeout(() => {
                     server.close();

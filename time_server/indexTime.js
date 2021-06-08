@@ -51,7 +51,7 @@ const initServer = () => {
                 handleIncomingData(socket, buf);
             });
             socket.on('error', err => {
-                if (err.code === 'ECONNREFUSED') {
+                if (err.name === 'ECONNREFUSED') {
                     console.log(`peer ${peerInfo} not available`);
                 }
             });

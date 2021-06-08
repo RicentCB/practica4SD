@@ -192,7 +192,7 @@ function findServer() {
                 });
 
                 sock.on('error', err => {
-                    if (err.code === 'ECONNREFUSED') {
+                    if (err.name === 'ECONNREFUSED') {
                         console.log(`server ${serverInfo} not available`);
                     }
                 });
