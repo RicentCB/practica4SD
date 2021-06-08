@@ -67,8 +67,8 @@ const handleIncomingData = (socket, data) => {
         let curr = new Clock(mainTime.hours, mainTime.minutes, mainTime.seconds, mainTime.millis);
         msg.time_responses.forEach(time => {
             let cl1 = new Clock(msg.hours, msg.minutes, msg.seconds, msg.millis);
-            let dif = curr.millis - cl1.millis;
-            sum_dif = sum_dif + curr.millis;    
+            let dif = Math.floor(curr.millis - cl1.millis);
+            sum_dif = sum_dif + dif;    
         });
         
         const prom = Math.floor( sum_dif / msg.time_responses.length );
