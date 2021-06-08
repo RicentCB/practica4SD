@@ -29,7 +29,7 @@ export default function main() {
     initComponents();
 }
 
-let lastSec=0;
+let lastSec = 0;
 function initClock() {
     mainClockWorker = new Worker('../common/worker.js', { type: "module" });
     //Reloj Maestro
@@ -37,7 +37,7 @@ function initClock() {
         thisClock = e.data;
         updateClockDom(document.querySelector(".clock"), e.data);
         //Actualizar log de hora
-        if(lastSec != e.data?.seconds){
+        if (lastSec != e.data?.seconds) {
             appendLogClock(document.querySelector('.log-clock'), e.data);
             lastSec = e.data?.seconds;
         }
@@ -55,7 +55,7 @@ function initComponents() {
     document.querySelector('#clock-s a.edit-clock').addEventListener('click', e => {
         e.preventDefault();
         //Detener reloj
-        mainClockWorker.postMessage({action: 'stop'})
+        mainClockWorker.postMessage({ action: 'stop' })
         // Modificar valores del modal
         modalEdit.querySelector(".hours input").value = thisClock.hours;
         modalEdit.querySelector(".mins input").value = thisClock.minutes;
@@ -66,7 +66,7 @@ function initComponents() {
     //Cancelar editar hora en modal
     modalEdit.querySelector("a.button.cancel").addEventListener('click', e => {
         e.preventDefault();
-        mainClockWorker.postMessage({action: 'resume'});
+        mainClockWorker.postMessage({ action: 'resume' });
         modalEdit.classList.remove('show');
     });
 
@@ -93,9 +93,9 @@ function initComponents() {
     });
 
     //Click en ventana para salir del editor
-    modalEdit.addEventListener("click", e=>{
-        if(e.target.classList.contains('show')){
-            mainClockWorker.postMessage({action: 'resume'});
+    modalEdit.addEventListener("click", e => {
+        if (e.target.classList.contains('show')) {
+            mainClockWorker.postMessage({ action: 'resume' });
             modalEdit.classList.remove('show');
         }
     });
@@ -118,12 +118,23 @@ function requestBook(conn) {
     db.getRandomBook().then(book => {
         console.log(book);
         sendToAllPeers({
-            type: "responseBook",
+            type: "responseBookServer",
             info: {
                 book: book,
                 origin: conn.remoteAddress
             }
         });
+
+        conn.write(
+            JSON.stringify(
+                {
+                    type: "responseBook",
+                    info: {
+                        book: book,
+                    }
+                }
+            )
+        );
 
         db.logRequest(conn.remoteAddress, book.isbn).catch(console.error);
         fillInfoBook(book);
@@ -164,10 +175,10 @@ function handleIncomingData(conn, data) {
         db.logRequestBatch(logs).catch(console.error);
     } else if (msg?.type === "requestBook") {
         requestBook(conn);
-    } else if (msg?.type === "responseBook") {
+    } else if (msg?.type === "responseBookServer") {
         db.setBorrowedBook(msg.info.book.isbn).catch(console.error);
         db.logRequest(msg.info.origin, msg.info.book.isbn).catch(console.error);
-        fillInfoBook(book);
+        fillInfoBook(msg.info.book);
     } else if (msg?.type === "offsetPeers") {
         let offsets = msg.data.offsets;
         mainClockWorker.postMessage({
@@ -188,14 +199,14 @@ function handleIncomingData(conn, data) {
             action: "offsetClock",
             offset: msg.data.offset,
         });
-    } else if(msg?.type === "timerequest"){
+    } else if (msg?.type === "timerequest") {
         timeResponses.push(thisClock);
-        if(peers.length == 1){
+        if (peers.length == 1) {
             conn.write(JSON.stringify(thisClock));
         }
         time_server = conn;
         //TODOm send to all peers
-        sendToAllPeers({type: "timerequestunique"});
+        sendToAllPeers({ type: "timerequestunique" });
         // modificar los clientes
     } else if (msg?.type === "timerequestunique") {
         conn.write(JSON.stringify({
@@ -204,10 +215,10 @@ function handleIncomingData(conn, data) {
                 clock: thisClock
             }
         }));
-    } else if(msg?.type === "timeresponse"){
+    } else if (msg?.type === "timeresponse") {
         console.log("Hora recibida");
         timeResponses.push(msg.data.clock);
-        if(peers.length <= timeResponses.length){
+        if (peers.length <= timeResponses.length) {
             console.log(timeResponses);
             time_server.write(JSON.stringify({
                 type: "timeServerResponse",
@@ -300,9 +311,9 @@ function initServer() {
                 throw err;
             }
         });
-        server.listen(serverInfo, () => {
+        server.listen(serverInfo.port, () => {
             let strServ = ' 1';
-            if(serverInfo.port == 5502)
+            if (serverInfo.port == 5502)
                 strServ = ' 2';
             document.querySelector('#main-content h1').innerHTML = document.querySelector('#main-content h1').innerHTML + strServ;
             console.log(`server bound on ${serverInfo.host}:${serverInfo.port}`);
