@@ -30,7 +30,8 @@ function bindButtons() {
 let lastSec=0;
 function initClock() {
     clock = new Worker('../common/worker.js', { type: "module" });
-    //Incializar reloj
+    //Reloj Cliente
+
     clock.onmessage = e => {
         thisClock = e.data;
         updateClockDom(document.querySelector('.clock'), e.data);
@@ -65,13 +66,11 @@ function configSocket() {
             BookInfoContainer.querySelector('#btn-request-book').addEventListener('click', requestBookHdl);
         } else if (msg?.type === 'timerequest'){
             console.log("Time requested");
-            //let response = {
-            //    type: "timeresponse",
-            //};
             thisClock.type = "timeresponse";
-            //console.log(thisClock);
+            console.log(thisClock);
             socket.write(JSON.stringify(thisClock));
-        }
+        } 
+        console.log(data.toString());
     };
     let endCallback = () => {
         console.log("disconnected from server");
