@@ -2,11 +2,11 @@
     "peers": [
         {
             "host": "localhost",
-            "port": 5500
+            "port": 5501
         },
         {
             "host": "localhost",
-            "port": 5502
+            "port": 5503
         }
     ]
 }
