@@ -66,38 +66,40 @@ const initServer = () => {
 const handleIncomingData = (socket, data) => {
     let msg = JSON.parse(data.toString());
     console.log(msg);
-    if (msg?.type != 'timerequestunique') {
-        let sum_dif = 0;
+    if (msg?.type === 'timeServerResponse') {
+        let times = msg.data.times;
         let curr = new Clock(mainTime.hours, mainTime.minutes, mainTime.seconds, mainTime.millis);
-        msg.time_responses.forEach(time => {
-            let cl1 = new Clock(msg.hours, msg.minutes, msg.seconds, msg.millis);
-            let dif = Math.floor(curr.millis - cl1.millis);
-            sum_dif = sum_dif + dif;    
+        let sum_dif = curr._millis;
+        times.forEach(time => {
+            let cl1 = new Clock(time.hours, time.minutes, time.seconds, time.millis);
+            sum_dif = sum_dif + cl1._millis;
         });
         
-        const prom = Math.floor( sum_dif / msg.time_responses.length );
+        const prom = Math.floor( sum_dif / (times.length + 1));
         
-        msg.time_responses.forEach(time => {
-            let cl1 = new Clock(msg.hours, msg.minutes, msg.seconds, msg.millis);
+        times.forEach(time => {
+            let cl1 = new Clock(time.hours, time.minutes, time.seconds, time.millis);
             let offset = prom - cl1.millis;
             arrOffsets.push(offset);
         });
+        console.log(arrOffsets);
+        peers[0].write(JSON.stringify(
+            { type: "offsetPeers",
+              data: {
+                  offsets: arrOffsets
+              }
+        }));
+        arrOffsets = [];
 
-        peers.forEach(peer => {
-            peer.write(JSON.stringify(
-                { type: "offsetPeer",
-                  data: {
-                      offsets: arrOffsets
-                  }
-            }));
-        }) 
+        mainClock.postMessage({
+            action: "offsetClock",
+            offset: prom - curr._millis,
+        });
     }
 }
 const sendTimeRquest = () => {
     setInterval(() => {
-        peers.forEach(peer => {
-            peer.write(JSON.stringify({ type: "timerequest" }));
-        })
+        peers[0].write(JSON.stringify({ type: "timerequest" }));
     }, secsInterval * 1000);
 }
 

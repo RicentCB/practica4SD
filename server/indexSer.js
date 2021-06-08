@@ -20,7 +20,7 @@ var server;
 var db;
 
 var time_server;
-var time_responses = [];
+var timeResponses = [];
 
 export default function main() {
     db = new Db(args.uri, args.db);
@@ -183,12 +183,13 @@ function handleIncomingData(conn, data) {
             }));
         }
     } else if (msg?.type === 'offsetClock') {
+        console.log(msg.data.offset);
         mainClockWorker.postMessage({
             action: "offsetClock",
             offset: msg.data.offset,
         });
     } else if(msg?.type === "timerequest"){
-        time_responses.push(thisClock);
+        timeResponses.push(thisClock);
         if(peers.length == 1){
             conn.write(JSON.stringify(thisClock));
         }
@@ -205,10 +206,16 @@ function handleIncomingData(conn, data) {
         }));
     } else if(msg?.type === "timeresponse"){
         console.log("Hora recibida");
-        time_responses.push(msg.data.clock);
-        if(peers.length <= time_responses.length){
-            time_server.write(JSON.stringify(time_responses));
-            time_responses = [];
+        timeResponses.push(msg.data.clock);
+        if(peers.length <= timeResponses.length){
+            console.log(timeResponses);
+            time_server.write(JSON.stringify({
+                type: "timeServerResponse",
+                data: {
+                    times: timeResponses
+                }
+            }));
+            timeResponses = [];
         }
     }
 }

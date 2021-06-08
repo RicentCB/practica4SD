@@ -116,8 +116,9 @@ function configSocket() {
                 confirmButtonText: 'Cerrar'
             });
             BookInfoContainer.querySelector('#btn-request-book').addEventListener('click', requestBookHdl);
-        } else if (msg?.type === 'offsetClock') {
-            clock.postMessage({
+        } else if (msg?.type === "offsetClock") {
+            console.log(msg.data.offset);
+            mainClockWorker.postMessage({
                 action: "offsetClock",
                 offset: msg.data.offset,
             });
