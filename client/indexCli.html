@@ -28,6 +28,9 @@
             <div class="row-flex">
                 <!-- Reloj Cliente -->
                 <div class="clock" id="clock-cli">
+                    <a href="#" class="btn-float edit-clock">
+                        <i class="fas fa-edit"></i>
+                    </a>
                     <div class="content-info">
                         <h1 class="hours">--</h1>
                         <h1 class="dots">:</h1>
@@ -59,6 +62,26 @@
             </div>
         </aside>
     </main>
+    
+    <!-- Modal de Edicion de Hora -->
+    <section id="modal-edit-clock">
+        <div class="container-clock">
+            <h3>Editar reloj</h3>
+            <div class="clock">
+                <div class="content-info">
+                    <h1 class="hours">HH<input type="number" value="24"></h1>
+                    <h1 class="dots">:</h1>
+                    <h1 class="mins">MM<input type="number" value="59"></h1>
+                    <h1 class="dots">:</h1>
+                    <h1 class="secs">SS<input type="number" value="59"></h1>
+                </div>
+            </div>
+            <div class="flex-row container-buttons">
+                <a href="#" class="button cancel" style="width: 40%;">Cancelar</a>
+                <a href="#" class="button accept green" style="width: 40%;">Aceptar</a>
+            </div>
+        </div>
+    </section>
     
     <!-- ======== SCRIPTS ======== -->
     <script type="module">

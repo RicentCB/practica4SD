@@ -8,7 +8,7 @@ import { updateClockDom, appendLogClock } from '../common/utils.js';
 
 const BookInfoContainer = document.querySelector('#book-container');
 
-var clock;
+var mainClockWorker;
 var socket;
 var thisClock;
 
@@ -26,13 +26,65 @@ function requestBookHdl(event) {
 
 function bindButtons() {
     BookInfoContainer.querySelector('#btn-request-book').addEventListener('click', requestBookHdl);
+    //Abrir modal para editar reloj
+    // Modal para editar reloj
+    const modalEdit = document.querySelector("#modal-edit-clock");
+
+    // Boton para editar el reloj
+    document.querySelector('a.edit-clock').addEventListener('click', e => {
+        e.preventDefault();
+        //Detener reloj
+        mainClockWorker.postMessage({action: 'stop'})
+        // Modificar valores del modal
+        modalEdit.querySelector(".hours input").value = thisClock.hours;
+        modalEdit.querySelector(".mins input").value = thisClock.minutes;
+        modalEdit.querySelector(".secs input").value = thisClock.seconds;
+        //Abrir modal
+        modalEdit.classList.add('show');
+    });
+    //Cancelar editar hora en modal
+    modalEdit.querySelector("a.button.cancel").addEventListener('click', e => {
+        e.preventDefault();
+        mainClockWorker.postMessage({action: 'resume'});
+        modalEdit.classList.remove('show');
+    });
+
+    //Aceptar cambio
+    modalEdit.querySelector("a.button.accept").addEventListener("click", e => {
+        e.preventDefault();
+        let newHours = Number(modalEdit.querySelector("h1.hours input").value);
+        let newMins = Number(modalEdit.querySelector("h1.mins input").value);
+        let newSecs = Number(modalEdit.querySelector("h1.secs input").value);
+        const time = {
+            hours: newHours,
+            mins: newMins,
+            secs: newSecs,
+            millis: 0
+        };
+        // Cambiar reloj
+        mainClockWorker.postMessage({
+            action: 'setTime',
+            time: time,
+        });
+
+        //Cerrar modal
+        modalEdit.classList.remove('show');
+    });
+
+    //Click en ventana para salir del editor
+    modalEdit.addEventListener("click", e=>{
+        if(e.target.classList.contains('show')){
+            mainClockWorker.postMessage({action: 'resume'});
+            modalEdit.classList.remove('show');
+        }
+    });
 }
 let lastSec=0;
 function initClock() {
-    clock = new Worker('../common/worker.js', { type: "module" });
+    mainClockWorker = new Worker('../common/worker.js', { type: "module" });
     //Reloj Cliente
 
-    clock.onmessage = e => {
+    mainClockWorker.onmessage = e => {
         thisClock = e.data;
         updateClockDom(document.querySelector('.clock'), e.data);
         //Actualizar log de hora
@@ -41,7 +93,7 @@ function initClock() {
             lastSec = e.data?.seconds;
         }
     }
-    clock.postMessage({
+    mainClockWorker.postMessage({
         name: "Reloj"
     });
 }
