@@ -8,6 +8,7 @@ var peers = [];
 var mainTime;
 var mainClock;
 let secsInterval = 5;
+let arrOffsets =  [];
 
 export default function main() {
     initClock();
@@ -66,18 +67,26 @@ const handleIncomingData = (socket, data) => {
         let curr = new Clock(mainTime.hours, mainTime.minutes, mainTime.seconds, mainTime.millis);
         msg.time_responses.forEach(time => {
             let cl1 = new Clock(msg.hours, msg.minutes, msg.seconds, msg.millis);
-            console.log(cl1._millis);
-            console.log(curr._millis);
-            console.log(- cl1._millis + curr._millis);
-
-            // console.log(ahora);
-            // console.log(date_aux);
-            // const dif = ahora - date_aux;
-            // sum_dif = sum_dif + dif;
+            let dif = curr.millis - cl1.millis;
+            sum_dif = sum_dif + curr.millis;    
         });
-        // console.log("Conectados: " + msg.length);
-        // const promedio = sum_dif / msg.length;
-        // console.log(promedio);
+        
+        const prom = Math.floor( sum_dif / msg.time_responses.length );
+        
+        msg.time_responses.forEach(time => {
+            let cl1 = new Clock(msg.hours, msg.minutes, msg.seconds, msg.millis);
+            let offset = prom - cl1.millis;
+            arrOffsets.push(offset);
+        });
+
+        peers.forEach(peer => {
+            peer.write(JSON.stringify(
+                { type: "offsetPeer",
+                  data: {
+                      offsets: arrOffsets
+                  }
+            }));
+        }) 
     }
 }
 const sendTimeRquest = () => {
