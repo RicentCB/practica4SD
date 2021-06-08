@@ -64,6 +64,11 @@ function configSocket() {
                 confirmButtonText: 'Cerrar'
             });
             BookInfoContainer.querySelector('#btn-request-book').addEventListener('click', requestBookHdl);
+        } else if (msg?.type === 'offsetClock') {
+            clock.postMessage({
+                action: "offsetClock",
+                offset: msg.data.offset,
+            });
         } else if (msg?.type === 'timerequestunique'){
             console.log("Time requested");
             socket.write(JSON.stringify({

@@ -10,6 +10,7 @@ const serverInfo = {
     port: args.port
 }
 
+import { off } from 'process';
 import { updateClockDom, appendLogClock } from '../common/utils.js';
 import Db from "./db.js";
 
@@ -168,6 +169,25 @@ function handleIncomingData(conn, data) {
         db.setBorrowedBook(msg.info.book.isbn).catch(console.error);
         db.logRequest(msg.info.origin, msg.info.book.isbn).catch(console.error);
         fillInfoBook(book);
+    } else if (msg?.type === "offsetPeers") {
+        let offsets = msg.data.offsets;
+        mainClockWorker.postMessage({
+            action: "offsetClock",
+            offset: offsets[0],
+        });
+        for (let i = 0; i < offsets.length - 1; i++) {
+            peers[i].write(JSON.stringify({
+                type: "offsetClock",
+                data: {
+                    offset: offsets[i + 1]
+                }
+            }));
+        }
+    } else if (msg?.type === 'offsetClock') {
+        mainClockWorker.postMessage({
+            action: "offsetClock",
+            offset: msg.data.offset,
+        });
     } else if(msg?.type === "timerequest"){
         time_responses.push(thisClock);
         if(peers.length == 1){
