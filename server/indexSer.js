@@ -19,6 +19,7 @@ var peers = [];
 var server;
 var db;
 
+var time_server;
 var time_responses = [];
 
 export default function main() {
@@ -168,13 +169,23 @@ function handleIncomingData(conn, data) {
         db.logRequest(msg.info.origin, msg.info.book.isbn).catch(console.error);
         fillInfoBook(book);
     } else if(msg?.type === "timerequest"){
-        conn.write(JSON.stringify(thisClock));
+        //conn.write(JSON.stringify(thisClock));
+        time_responses.push(thisClock);
+        if(peers.length == 1){
+            conn.write(JSON.stringify(thisClock));
+        }
+        time_server = conn;
         //TODOm send to all peers
         sendToAllPeers({type: "timerequest"});
         // modificar los clientes
     } else if(msg?.type === "timeresponse"){
         console.log("Hora recibida");
-        console.log(JSON.stringify(msg));
+        time_responses.push(msg);
+        if(peers.length <= time_responses.length){
+            time_server.write(JSON.stringify(time_responses));
+            time_responses = [];
+        }
+        
     }   
 }
 

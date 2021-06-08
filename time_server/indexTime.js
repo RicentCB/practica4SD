@@ -45,7 +45,26 @@ const initServer = ()=>{
 
 const handleIncomingData = (socket, data)=>{
     let msg = JSON.parse(data.toString());
-    console.log(msg);
+    const ahora = Date.now();
+    
+    if(msg?.type != 'timerequest'){
+        console.log(msg);    
+        let sum_dif = 0;
+        msg.forEach(time => {
+            console.log(time);
+            let cl1 = new Clock(msg.hours, msg.mins, msg.secs, msg.millis);
+            
+            console.log(ahora);
+            console.log(date_aux);
+            const dif = ahora - date_aux;
+            sum_dif = sum_dif + dif;
+        });
+        console.log("Conectados: "+msg.length);
+        const promedio = sum_dif / msg.length;
+        console.log(promedio);
+    }
+    
+    
     //TODO: Algortimo
     // let cl1 = new Clock(msg.hours, msg.mins, msg.secs, msg.millis)
     // let ms1 = cl1.millis;
