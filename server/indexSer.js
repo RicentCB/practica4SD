@@ -210,12 +210,16 @@ function handleIncomingPeerData(conn, data) {
     } else if (msg?.type === "responseGlobalStatus") {
         let books = msg.info.books;
         let logs = msg.info.logs;
-        db.setBooksBatch(books).then(() => {
-            return showAllAvailableBooks();
+        db.setBooksBatch(books).then(async () => {
+            try {
+                return showAllAvailableBooks();
+            } catch (message) {
+                return console.error(message);
+            };
         })
             .catch(console.error);
         db.logRequestBatch(logs).catch(console.error);
-    } else if (msg?.type === "setBorrowedBook") {
+    } else if (msg?.type === "responseBookServer") {
         db.setBorrowedBook(msg.info.book.isbn).catch(console.error);
         db.logRequest(msg.info.origin, msg.info.book.isbn).catch(console.error);
         fillInfoBook(msg.info.book);

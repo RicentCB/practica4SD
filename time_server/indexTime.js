@@ -137,8 +137,23 @@ const handleIncomingPeerData = (socket, data) => {
 const bindButtons = () => {
     document.querySelector('#btn-interval').addEventListener('click', () => {
         const interval = Number(document.querySelector('#in-interval').value);
-        if (!Number.isNaN(interval))
+        if (!Number.isNaN(interval)){
             secsInterval = interval;
+            clearInterval(intervalHandler);
+
+            intervalHandler = setInterval(() => {
+                peerData = [];
+                for (let i = 0; i < peers.length; i++) {
+                    peerData.push(undefined);
+                    peers[i].write(JSON.stringify({
+                        type: "requestAllTimes",
+                        data: {
+                            index: i
+                        }
+                    }));
+                }
+            }, secsInterval * 1000);
+        }
     });
 }
 
