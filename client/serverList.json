@@ -1,11 +1,11 @@
 {
     "peers": [
         {
-            "host": "localhost",
+            "host": "201.97.228.22",
             "port": 5500
         },
         {
-            "host": "localhost",
+            "host": "201.97.228.22",
             "port": 5502
         }
     ]
