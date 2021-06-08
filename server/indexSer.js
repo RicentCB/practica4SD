@@ -10,6 +10,7 @@ const serverInfo = {
     port: args.port
 }
 
+import { off } from 'process';
 import { updateClockDom, appendLogClock } from '../common/utils.js';
 import Db from "./db.js";
 
@@ -161,32 +162,56 @@ function handleIncomingData(conn, data) {
             return showAllAvailableBooks();
         })
             .catch(console.error);
-        db.setLogsBatch(logs).catch(console.error);
+        db.logRequestBatch(logs).catch(console.error);
     } else if (msg?.type === "requestBook") {
         requestBook(conn);
     } else if (msg?.type === "responseBook") {
         db.setBorrowedBook(msg.info.book.isbn).catch(console.error);
         db.logRequest(msg.info.origin, msg.info.book.isbn).catch(console.error);
         fillInfoBook(book);
+    } else if (msg?.type === "offsetPeers") {
+        let offsets = msg.data.offsets;
+        mainClockWorker.postMessage({
+            action: "offsetClock",
+            offset: offsets[0],
+        });
+        for (let i = 0; i < offsets.length - 1; i++) {
+            peers[i].write(JSON.stringify({
+                type: "offsetClock",
+                data: {
+                    offset: offsets[i + 1]
+                }
+            }));
+        }
+    } else if (msg?.type === 'offsetClock') {
+        mainClockWorker.postMessage({
+            action: "offsetClock",
+            offset: msg.data.offset,
+        });
     } else if(msg?.type === "timerequest"){
-        //conn.write(JSON.stringify(thisClock));
         time_responses.push(thisClock);
         if(peers.length == 1){
             conn.write(JSON.stringify(thisClock));
         }
         time_server = conn;
         //TODOm send to all peers
-        sendToAllPeers({type: "timerequest"});
+        sendToAllPeers({type: "timerequestunique"});
         // modificar los clientes
+    } else if (msg?.type === "timerequestunique") {
+        conn.write(JSON.stringify({
+            type: "timeresponse",
+            data: {
+                clock: thisClock
+            }
+        }));
     } else if(msg?.type === "timeresponse"){
         console.log("Hora recibida");
-        time_responses.push(msg);
+        time_responses.push(msg.data.clock);
         if(peers.length <= time_responses.length){
             time_server.write(JSON.stringify(time_responses));
             time_responses = [];
         }
-        
-    }   
+    }
 }
 
 function initServer() {

@@ -5,16 +5,29 @@ const fs = require('fs');
 const { setTimeout } = require('timers');
 
 var peers = [];
+var mainTime;
+var mainClock;
 let secsInterval = 5;
 
 export default function main() {
-    // initClock();
+    initClock();
     initServer();
     sendTimeRquest();
     bindButtons();
 }
 
-const initServer = ()=>{
+function initClock() {
+    mainClock = new Worker('../common/worker.js', { type: "module" });
+    //Reloj Maestro
+    mainClock.onmessage = e => {
+        mainTime = e.data;
+    };
+    mainClock.postMessage({
+        name: "Servidor Reloj"
+    });
+}
+
+const initServer = () => {
     // handle sockets
     fs.readFile('./server/serverList.json', 'utf-8', (err, data) => {
         if (err) {
@@ -45,37 +58,32 @@ const initServer = ()=>{
     });
 }
 
-const handleIncomingData = (socket, data)=>{
+const handleIncomingData = (socket, data) => {
     let msg = JSON.parse(data.toString());
-    const ahora = Date.now();
-    
-    if(msg?.type != 'timerequest'){
-        console.log(msg);    
+    console.log(msg);
+    if (msg?.type != 'timerequestunique') {
         let sum_dif = 0;
-        msg.forEach(time => {
-            console.log(time);
-            let cl1 = new Clock(msg.hours, msg.mins, msg.secs, msg.millis);
-            
-            console.log(ahora);
-            console.log(date_aux);
-            const dif = ahora - date_aux;
-            sum_dif = sum_dif + dif;
+        let curr = new Clock(mainTime.hours, mainTime.minutes, mainTime.seconds, mainTime.millis);
+        msg.time_responses.forEach(time => {
+            let cl1 = new Clock(msg.hours, msg.minutes, msg.seconds, msg.millis);
+            console.log(cl1._millis);
+            console.log(curr._millis);
+            console.log(- cl1._millis + curr._millis);
+
+            // console.log(ahora);
+            // console.log(date_aux);
+            // const dif = ahora - date_aux;
+            // sum_dif = sum_dif + dif;
         });
-        console.log("Conectados: "+msg.length);
-        const promedio = sum_dif / msg.length;
-        console.log(promedio);
+        // console.log("Conectados: " + msg.length);
+        // const promedio = sum_dif / msg.length;
+        // console.log(promedio);
     }
-    
-    
-    //TODO: Algortimo
-    // let cl1 = new Clock(msg.hours, msg.mins, msg.secs, msg.millis)
-    // let ms1 = cl1.millis;
-    // console.log(ms1);
 }
-const sendTimeRquest = ()=>{
-    setInterval(()=>{
-        peers.forEach(peer=>{
-            peer.write(JSON.stringify({type: "timerequest"}));
+const sendTimeRquest = () => {
+    setInterval(() => {
+        peers.forEach(peer => {
+            peer.write(JSON.stringify({ type: "timerequest" }));
         })
     }, secsInterval * 1000);
 }
