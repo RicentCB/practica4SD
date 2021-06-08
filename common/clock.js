@@ -41,8 +41,8 @@ export default class Clock {
     set time(newTime) {
         newTime.hours = mod(newTime.hours, 24);
         newTime.mins = mod(newTime.mins, 60);
-        newTime.secs = mod(newTime, 60);
-        newTime.millis = mod(newTime, 1000);
+        newTime.secs = mod(newTime.secs, 60);
+        newTime.millis = mod(newTime.millis, 1000);
         this._millis = newTime.hours * hourInMillis + newTime.mins * minuteInMillis + newTime.secs * 1000 + newTime.millis;
     }
     advance(millis) {
