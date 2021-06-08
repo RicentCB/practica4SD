@@ -53,17 +53,12 @@ function initComponents() {
     // Boton para editar el reloj
     document.querySelector('#clock-s a.edit-clock').addEventListener('click', e => {
         e.preventDefault();
-        //Detener relok
+        //Detener reloj
         mainClockWorker.postMessage({action: 'stop'})
-
-        const ClockContainer = e.currentTarget.parentNode
-        const currHours = Number(ClockContainer.querySelector("h1.hours").innerHTML);
-        const currMins = Number(ClockContainer.querySelector("h1.mins").innerHTML);
-        const currSecs = Number(ClockContainer.querySelector("h1.secs").innerHTML);
         // Modificar valores del modal
-        modalEdit.querySelector(".hours input").value = currHours;
-        modalEdit.querySelector(".mins input").value = currMins;
-        modalEdit.querySelector(".secs input").value = currSecs;
+        modalEdit.querySelector(".hours input").value = thisClock.hours;
+        modalEdit.querySelector(".mins input").value = thisClock.minutes;
+        modalEdit.querySelector(".secs input").value = thisClock.seconds;
         //Abrir modal
         modalEdit.classList.add('show');
     });
@@ -80,12 +75,12 @@ function initComponents() {
         let newHours = Number(modalEdit.querySelector("h1.hours input").value);
         let newMins = Number(modalEdit.querySelector("h1.mins input").value);
         let newSecs = Number(modalEdit.querySelector("h1.secs input").value);
-        let time = {
+        const time = {
             hours: newHours,
             mins: newMins,
             secs: newSecs,
+            millis: 0
         };
-        console.log(time);
         // Cambiar reloj
         mainClockWorker.postMessage({
             action: 'setTime',

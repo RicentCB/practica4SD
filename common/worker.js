@@ -57,7 +57,7 @@ onmessage = function initState(e) {
         return function (e) {
             if (e.data.action === 'setTime') {
                 clearInterval(mlHandler);
-                console.log(e.data);
+                console.log(internal_clock);
                 internal_clock.time = e.data.time;
                 console.log(internal_clock);
                 mlHandler = mainLoop(velocity);
