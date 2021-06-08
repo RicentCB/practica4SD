@@ -7,11 +7,13 @@ const { setTimeout } = require('timers');
 var peers = [];
 var mainTime;
 var mainClock;
+let secsInterval = 5;
 
 export default function main() {
     initClock();
     initServer();
     sendTimeRquest();
+    bindButtons();
 }
 
 function initClock() {
@@ -83,8 +85,15 @@ const sendTimeRquest = () => {
         peers.forEach(peer => {
             peer.write(JSON.stringify({ type: "timerequest" }));
         })
-    }, 5000);
+    }, secsInterval * 1000);
 }
 
+const bindButtons = ()=>{
+    document.querySelector('#btn-interval').addEventListener('click', ()=>{
+        const interval = Number(document.querySelector('#in-interval').value);
+        if(!Number.isNaN(interval))
+            secsInterval = interval;
+    });
+}
 
 
