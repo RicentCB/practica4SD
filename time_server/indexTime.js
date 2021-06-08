@@ -1,3 +1,4 @@
+
 import Clock from '../common/clock.js';
 
 const net = require('net');
@@ -66,7 +67,7 @@ function createServer() {
             }
         });
         c.on('error', err => {
-            if (err.code !== 'ECONNRESET') {
+            if (err.name !== 'ECONNRESET') {
                 console.error(err);
             }
         });
@@ -74,7 +75,7 @@ function createServer() {
         peers.push(c);
     });
     server.on('error', (err) => {
-        if (err.code === 'EADDRINUSE') {
+        if (err.name === 'EADDRINUSE') {
             console.log('Address in use, retrying...');
             setTimeout(() => {
                 server.close();
