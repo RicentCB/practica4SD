@@ -10,6 +10,9 @@ var mainClock;
 let secsInterval = 5;
 let arrOffsets =  [];
 
+import { updateClockDom } from '../common/utils.js';
+
+
 export default function main() {
     initClock();
     initServer();
@@ -22,6 +25,7 @@ function initClock() {
     //Reloj Maestro
     mainClock.onmessage = e => {
         mainTime = e.data;
+        updateClockDom(document.querySelector(".clock"), e.data);
     };
     mainClock.postMessage({
         name: "Servidor Reloj"
