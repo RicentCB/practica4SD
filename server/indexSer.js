@@ -155,8 +155,8 @@ function handleIncomingData(conn, data) {
     } else if (msg?.type === "responseGlobalStatus") {
         let books = msg.info.books;
         let logs = msg.info.logs;
-        console.log(books);
-        console.log(logs);
+        // console.log(books);
+        // console.log(logs);
         db.setBooksBatch(books).then(() => {
             return showAllAvailableBooks();
         })
@@ -294,6 +294,10 @@ function initServer() {
             }
         });
         server.listen(serverInfo, () => {
+            let strServ = ' 1';
+            if(serverInfo.port == 5502)
+                strServ = ' 2';
+            document.querySelector('#main-content h1').innerHTML = document.querySelector('#main-content h1').innerHTML + strServ;
             console.log(`server bound on ${serverInfo.host}:${serverInfo.port}`);
         });
         fs.writeFile('./server/serverList.json', JSON.stringify(peerList, null, 4), (err) => {
