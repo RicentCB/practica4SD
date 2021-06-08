@@ -64,11 +64,14 @@ function configSocket() {
                 confirmButtonText: 'Cerrar'
             });
             BookInfoContainer.querySelector('#btn-request-book').addEventListener('click', requestBookHdl);
-        } else if (msg?.type === 'timerequest'){
+        } else if (msg?.type === 'timerequestunique'){
             console.log("Time requested");
-            thisClock.type = "timeresponse";
-            console.log(thisClock);
-            socket.write(JSON.stringify(thisClock));
+            socket.write(JSON.stringify({
+                type: "timeresponse",
+                data: {
+                    clock: thisClock
+                }
+            }));
         } 
         console.log(data.toString());
     };
