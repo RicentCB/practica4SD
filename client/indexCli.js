@@ -105,8 +105,8 @@ function configSocket() {
         if (msg?.type === 'responseBook') {
             const book = msg.info?.book;
             showBook(book);
-        } else if (msg?.type === 'enableReset') {
-            enableReset();
+        } else if (msg?.type === 'resetSession') {
+            socket.end();
         } else if (msg?.type === 'error') {
             //Alerta
             Swal.fire({

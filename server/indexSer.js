@@ -228,6 +228,8 @@ function handleIncomingData(conn, data) {
             }));
             timeResponses = [];
         }
+    } else if (msg?.type === "resetSession") {
+        resetSessionUnique();
     }
 }
 
@@ -366,7 +368,7 @@ function fillInfoBook(value) {
 
 }
 
-function resetSession() {
+function resetSessionUnique() {
     let lastBookContainer = document.querySelector('#last-book');
     db.resetBooks().catch(console.error);
 
@@ -379,4 +381,11 @@ function resetSession() {
         icon: 'info',
         confirmButtonText: 'Aceptar'
     });
+}
+
+function resetSession() {
+    resetSessionUnique();
+    sendToAllPeers({
+        type: "resetSession"
+    })
 }
