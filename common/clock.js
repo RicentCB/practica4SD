@@ -27,9 +27,13 @@ export default class Clock {
         };
     }
 
+    static timeToMillis(time) {
+        return time.hours * hourInMillis + time.minutes * minuteInMillis + time.seconds * 1000 + time.millis;
+    }
+
     get millis() {
         return this._millis
-    };
+    }
 
     set time(newTime) {
         newTime.hours = newTime.hours % 24;

@@ -6,22 +6,37 @@ const fs = require('fs');
 
 const args = remote.getGlobal('args');
 
-const serverInfo = {
+const clientServerInfo = {
     host: "localhost",
     port: args.port
+}
+
+const peerServerInfo = {
+    host: clientServerInfo.host,
+    port: clientServerInfo.port + 1
+}
+
+const timeServerInfo = {
+    host: "localhost",
+    port: 5000
 }
 
 import { updateClockDom, appendLogClock } from '../common/utils.js';
 import Db from "./db.js";
 
 var mainClockWorker;
-var thisClock;
-var peers = [];
+var serverClock;
 var server;
+var clientServer;
 var db;
 
-var time_server;
-var timeResponses = [];
+var peers = [];
+var clients = [];
+
+var timeServer;
+var clientTimes = [];
+
+var serverIndex = 0;
 
 export default function main() {
     db = new Db(args.uri, args.db);
@@ -35,7 +50,7 @@ function initClock() {
     mainClockWorker = new Worker('../common/worker.js', { type: "module" });
     //Reloj Maestro
     mainClockWorker.onmessage = e => {
-        thisClock = e.data;
+        serverClock = e.data;
         updateClockDom(document.querySelector(".clock"), e.data);
         //Actualizar log de hora
         if (lastSec != e.data?.seconds) {
@@ -58,9 +73,9 @@ function initComponents() {
         //Detener reloj
         mainClockWorker.postMessage({ action: 'stop' })
         // Modificar valores del modal
-        modalEdit.querySelector(".hours input").value = thisClock.hours;
-        modalEdit.querySelector(".mins input").value = thisClock.minutes;
-        modalEdit.querySelector(".secs input").value = thisClock.seconds;
+        modalEdit.querySelector(".hours input").value = serverClock.hours;
+        modalEdit.querySelector(".mins input").value = serverClock.minutes;
+        modalEdit.querySelector(".secs input").value = serverClock.seconds;
         //Abrir modal
         modalEdit.classList.add('show');
     });
@@ -115,9 +130,14 @@ function sendToAllPeers(response) {
     }
 }
 
+function sendToAllClients(response) {
+    for (let client of clients) {
+        client.write(JSON.stringify(response));
+    }
+}
+
 function requestBook(conn) {
     db.getRandomBook().then(book => {
-        console.log(book);
         sendToAllPeers({
             type: "responseBookServer",
             info: {
@@ -150,8 +170,32 @@ function requestBook(conn) {
     });
 }
 
-function handleIncomingData(conn, data) {
+function handleIncomingClientData(conn, data) {
     let msg = JSON.parse(data.toString());
+    console.log("message from client");
+    console.log(msg);
+    if (msg?.type === "requestBook") {
+        requestBook(conn);
+    } else if (msg?.type === "responseTime") {
+        clientTimes.push(msg.data.clock);
+        if (clients.length === clientTimes.length) {
+            console.log(clientTimes);
+            timeServer.write(JSON.stringify({
+                type: "responseAllTimes",
+                data: {
+                    serverTime: serverClock,
+                    index: serverIndex,
+                    clientTimes: clientTimes
+                }
+            }));
+            clientTimes = [];
+        }
+    }
+}
+
+function handleIncomingPeerData(conn, data) {
+    let msg = JSON.parse(data.toString());
+    console.log("message from peer");
     console.log(msg);
     if (msg?.type === "requestGlobalStatus") {
         Promise.all([db.getBooks(), db.getLogs()])
@@ -167,160 +211,219 @@ function handleIncomingData(conn, data) {
     } else if (msg?.type === "responseGlobalStatus") {
         let books = msg.info.books;
         let logs = msg.info.logs;
-        // console.log(books);
-        // console.log(logs);
         db.setBooksBatch(books).then(() => {
             return showAllAvailableBooks();
         })
             .catch(console.error);
         db.logRequestBatch(logs).catch(console.error);
-    } else if (msg?.type === "requestBook") {
-        requestBook(conn);
-    } else if (msg?.type === "responseBookServer") {
+    } else if (msg?.type === "setBorrowedBook") {
         db.setBorrowedBook(msg.info.book.isbn).catch(console.error);
         db.logRequest(msg.info.origin, msg.info.book.isbn).catch(console.error);
         fillInfoBook(msg.info.book);
-    } else if (msg?.type === "offsetPeers") {
-        let offsets = msg.data.offsets;
-        mainClockWorker.postMessage({
-            action: "offsetClock",
-            offset: offsets[0],
-        });
-        for (let i = 0; i < offsets.length - 1; i++) {
-            peers[i].write(JSON.stringify({
-                type: "offsetClock",
-                data: {
-                    offset: offsets[i + 1]
-                }
-            }));
-        }
-    } else if (msg?.type === 'offsetClock') {
-        console.log(msg.data.offset);
-        mainClockWorker.postMessage({
-            action: "offsetClock",
-            offset: msg.data.offset,
-        });
-    } else if (msg?.type === "timerequest") {
-        timeResponses.push(thisClock);
-        if (peers.length == 1) {
-            conn.write(JSON.stringify(thisClock));
-        }
-        time_server = conn;
-        //TODOm send to all peers
-        sendToAllPeers({ type: "timerequestunique" });
-        // modificar los clientes
-    } else if (msg?.type === "timerequestunique") {
-        conn.write(JSON.stringify({
-            type: "timeresponse",
-            data: {
-                clock: thisClock
-            }
-        }));
-    } else if (msg?.type === "timeresponse") {
-        console.log("Hora recibida");
-        timeResponses.push(msg.data.clock);
-        if (peers.length <= timeResponses.length) {
-            console.log(timeResponses);
-            time_server.write(JSON.stringify({
-                type: "timeServerResponse",
-                data: {
-                    times: timeResponses
-                }
-            }));
-            timeResponses = [];
-        }
     } else if (msg?.type === "resetSession") {
         resetSessionUnique();
     }
 }
 
+function handleTimeServerData(data) {
+    let msg = JSON.parse(data.toString());
+    console.log("message from time server");
+    console.log(msg);
+    if (msg?.type === "requestAllTimes") {
+        serverIndex = msg.data.index;
+        if (clients.length == 0) {
+            timeServer.write(JSON.stringify({
+                type: "responseAllTimes",
+                data: {
+                    serverTime: serverClock,
+                    index: serverIndex,
+                    clientTimes: []
+                }
+            }));
+            return;
+        }
+
+        sendToAllClients({ type: "requestTime" });
+
+    } else if (msg?.type === "offsetAllClocks") {
+        let serverOffset = msg.data.serverOffset;
+        let offsets = msg.data.clientOffsets;
+        mainClockWorker.postMessage({
+            action: "offsetClock",
+            offset: serverOffset,
+        });
+        for (let i = 0; i < offsets.length; i++) {
+            clients[i].write(JSON.stringify({
+                type: "offsetClock",
+                data: {
+                    offset: offsets[i]
+                }
+            }));
+        }
+    }
+}
+
+function connectWithPeers(peerList, data) {
+    let getGlobalStatus = true;
+    // try connecting with peers
+    peerList.peers.forEach(peer => {
+        if (peer.host === peerServerInfo.host && peer.port === peerServerInfo.port) {
+            return;
+        }
+        let peerInfo = `${peer.host}:${peer.port}`;
+        let socket = new net.Socket();
+        socket.connect(peer, () => {
+            console.log(`connected to peer ${peerInfo}`);
+            peers.push(socket);
+            if (getGlobalStatus) {
+                socket.write(JSON.stringify({
+                    type: "requestGlobalStatus"
+                }));
+                getGlobalStatus = false;
+            }
+        });
+        socket.on('data', (buf) => {
+            handleIncomingPeerData(socket, buf);
+        });
+        socket.on('error', err => {
+            if (err.code === 'ECONNREFUSED') {
+                console.log(`peer ${peerInfo} not available`);
+            }
+        });
+        socket.on('end', () => {
+            console.log(`disconnected from peer ${peerInfo}`);
+        });
+    });
+    if (getGlobalStatus) {
+        showAllAvailableBooks().catch(console.error);
+    }
+}
+
+function createPeerServer() {
+    // create a TCP server for new peers to connect to
+    server = net.createServer(c => {
+
+        let peer = `${c.remoteAddress}:${c.remotePort}`;
+        console.log(`peer ${peer} connected`);
+
+        // event delegation for current connections
+        c.on('data', (buf) => {
+            handleIncomingPeerData(c, buf);
+        });
+        c.on('close', () => {
+            console.log(`peer ${peer} disconnected`);
+            let idx = peers.indexOf(c);
+            if (idx !== -1) {
+                peers.splice(idx, 1);
+            }
+        });
+        c.on('error', err => {
+            if (err.code !== 'ECONNRESET') {
+                console.error(err);
+            }
+        });
+
+        peers.push(c);
+    });
+    server.on('error', (err) => {
+        if (err.code === 'EADDRINUSE') {
+            console.log('Address in use, retrying...');
+            setTimeout(() => {
+                server.close();
+                server.listen(clientServerInfo.port);
+            }, 1000);
+        } else {
+            throw err;
+        }
+    });
+    server.listen(peerServerInfo.port, () => {
+        console.log(`peer server bound on ${peerServerInfo.host}:${peerServerInfo.port}`);
+    });
+}
+
+function createClientServer() {
+    // create a TCP server for new peers to connect to
+    clientServer = net.createServer(c => {
+
+        let client = `${c.remoteAddress}:${c.remotePort}`;
+        console.log(`client ${client} connected`);
+
+        // event delegation for current connections
+        c.on('data', (buf) => {
+            handleIncomingClientData(c, buf);
+        });
+        c.on('close', () => {
+            console.log(`client ${client} disconnected`);
+            let idx = clients.indexOf(c);
+            if (idx !== -1) {
+                clients.splice(idx, 1);
+            }
+        });
+        c.on('error', err => {
+            if (err.code !== 'ECONNRESET') {
+                console.error(err);
+            }
+        });
+
+        clients.push(c);
+    });
+    clientServer.on('error', (err) => {
+        if (err.code === 'EADDRINUSE') {
+            console.log('Address in use, retrying...');
+            setTimeout(() => {
+                clientServer.close();
+                clientServer.listen(clientServerInfo.port);
+            }, 1000);
+        } else {
+            throw err;
+        }
+    });
+    clientServer.listen(clientServerInfo.port, () => {
+        let strServ = ' 1';
+        if (clientServerInfo.port == 5502)
+            strServ = ' 2';
+        document.querySelector('#main-content h1').innerHTML = document.querySelector('#main-content h1').innerHTML + strServ;
+        console.log(`client server bound on ${clientServerInfo.host}:${clientServerInfo.port}`);
+    });
+}
+
+function connectToTimeServer() {
+    let handler = setInterval(() => {
+        timeServer = new net.Socket();
+        timeServer.connect(timeServerInfo, () => {
+            console.log(`connected to time server`);
+            clearInterval(handler);
+            timeServer.on('data', handleTimeServerData);
+            timeServer.on('close', () => {
+                console.log(`time server disconnected`);
+                connectToTimeServer();
+            })
+        });
+
+        timeServer.on('error', err => {
+            if (err.code === 'ECONNREFUSED') {
+                console.log(`time server not available`);
+            }
+        });
+    }, 5000);
+}
+
 function initServer() {
-    // handle sockets
     fs.readFile('./server/serverList.json', 'utf-8', (err, data) => {
-        let getGlobalStatus = true;
         if (err) {
             return console.error(err);
         }
-        // try connecting with peers
+
         let peerList = JSON.parse(data);
-        peerList.peers.forEach(peer => {
-            if (peer.host === serverInfo.host && peer.port === serverInfo.port) {
-                return;
-            }
-            let peerInfo = `${peer.host}:${peer.port}`;
-            let socket = new net.Socket();
-            socket.connect(peer, () => {
-                console.log(`connected to peer ${peerInfo}`);
-                peers.push(socket);
-                if (getGlobalStatus) {
-                    socket.write(JSON.stringify({
-                        type: "requestGlobalStatus"
-                    }));
-                    getGlobalStatus = false;
-                }
-            });
-            socket.on('data', (buf) => {
-                handleIncomingData(socket, buf);
-            });
-            socket.on('error', err => {
-                if (err.name === 'ECONNREFUSED') {
-                    console.log(`peer ${peerInfo} not available`);
-                }
-            });
-            socket.on('end', () => {
-                console.log(`disconnected from peer ${peerInfo}`);
-            });
-        });
-        if (getGlobalStatus) {
-            showAllAvailableBooks().catch(console.error);
+
+        connectWithPeers(peerList, data);
+
+        createPeerServer();
+        createClientServer();
+        connectToTimeServer();
+        if (!peerList.peers.some(peer => peer.host === peerServerInfo.host && peer.port === peerServerInfo.port)) {
+            peerList.peers.push(peerServerInfo);
         }
-
-        // create a TCP server for new peers to connect to
-        if (!peerList.peers.some(peer => peer.host === serverInfo.host && peer.port === serverInfo.port)) {
-            peerList.peers.push(serverInfo);
-        }
-        server = net.createServer(c => {
-
-            let client = `${c.remoteAddress}:${c.remotePort}`;
-            console.log(`${client} connected`);
-
-            // event delegation for current connections
-            c.on('data', (buf) => {
-                handleIncomingData(c, buf);
-            });
-            c.on('close', () => {
-                console.log(`${client} disconnected`);
-                let idx = peers.indexOf(c);
-                if (idx !== -1) {
-                    peers.splice(idx, 1);
-                }
-            });
-            c.on('error', err => {
-                if (err.name !== 'ECONNRESET') {
-                    console.error(err);
-                }
-            });
-
-            peers.push(c);
-        });
-        server.on('error', (err) => {
-            if (err.name === 'EADDRINUSE') {
-                console.log('Address in use, retrying...');
-                setTimeout(() => {
-                    server.close();
-                    server.listen(serverInfo.port);
-                }, 1000);
-            } else {
-                throw err;
-            }
-        });
-        server.listen(serverInfo.port, () => {
-            let strServ = ' 1';
-            if (serverInfo.port == 5502)
-                strServ = ' 2';
-            document.querySelector('#main-content h1').innerHTML = document.querySelector('#main-content h1').innerHTML + strServ;
-            console.log(`server bound on ${serverInfo.host}:${serverInfo.port}`);
-        });
         fs.writeFile('./server/serverList.json', JSON.stringify(peerList, null, 4), (err) => {
             if (err) return console.error(err);
             console.log("rewrote server list");
@@ -373,7 +476,7 @@ function resetSessionUnique() {
     let lastBookContainer = document.querySelector('#last-book');
     db.resetBooks().catch(console.error);
 
-    showAllAvailableBooks();
+    showAllAvailableBooks().catch(console.error);
     lastBookContainer.classList.remove('visible');
     //Alerta
     Swal.fire({
@@ -387,6 +490,9 @@ function resetSessionUnique() {
 function resetSession() {
     resetSessionUnique();
     sendToAllPeers({
+        type: "resetSession"
+    });
+    sendToAllClients({
         type: "resetSession"
     })
 }

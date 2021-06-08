@@ -1,3 +1,4 @@
+
 import Clock from '../common/clock.js';
 
 const net = require('net');
@@ -6,107 +7,138 @@ const { setTimeout } = require('timers');
 
 var peers = [];
 var mainTime;
-var mainClock;
-let secsInterval = 5;
-let arrOffsets =  [];
+var mainClockWorker;
+var secsInterval = 5;
 
 import { updateClockDom } from '../common/utils.js';
 
+var intervalHandler;
+var peerData = [];
+
+var server;
 
 export default function main() {
     initClock();
-    initServer();
-    sendTimeRquest();
+    createServer();
     bindButtons();
+    intervalHandler = setInterval(() => {
+        peerData = [];
+        for (let i = 0; i < peers.length; i++) {
+            peerData.push(undefined);
+            peers[i].write(JSON.stringify({
+                type: "requestAllTimes",
+                data: {
+                    index: i
+                }
+            }));
+        }
+    }, secsInterval * 1000);
 }
 
 function initClock() {
-    mainClock = new Worker('../common/worker.js', { type: "module" });
+    mainClockWorker = new Worker('../common/worker.js', { type: "module" });
     //Reloj Maestro
-    mainClock.onmessage = e => {
+    mainClockWorker.onmessage = e => {
         mainTime = e.data;
         updateClockDom(document.querySelector(".clock"), e.data);
     };
-    mainClock.postMessage({
+    mainClockWorker.postMessage({
         name: "Servidor Reloj"
     });
 }
 
-const initServer = () => {
-    // handle sockets
-    fs.readFile('./server/serverList.json', 'utf-8', (err, data) => {
-        if (err) {
-            return console.error(err);
-        }
-        // try connecting with peers
-        let peerList = JSON.parse(data);
-        peerList.peers.forEach(peer => {
-            let peerInfo = `${peer.host}:${peer.port}`;
-            let socket = new net.Socket();
-            socket.connect(peer, () => {
-                console.log(`connected to peer ${peerInfo}`);
-                peers.push(socket);
-            });
-            socket.on('data', (buf) => {
-                handleIncomingData(socket, buf);
-            });
-            socket.on('error', err => {
-                if (err.name === 'ECONNREFUSED') {
-                    console.log(`peer ${peerInfo} not available`);
-                }
-            });
-            socket.on('end', () => {
-                console.log(`disconnected from peer ${peerInfo}`);
-            });
+function createServer() {
+    // create a TCP server for new peers to connect to
+    server = net.createServer(c => {
+
+        let peer = `${c.remoteAddress}:${c.remotePort}`;
+        console.log(`peer ${peer} connected`);
+
+        // event delegation for current connections
+        c.on('data', (buf) => {
+            handleIncomingPeerData(c, buf);
+        });
+        c.on('close', () => {
+            console.log(`peer ${peer} disconnected`);
+            let idx = peers.indexOf(c);
+            if (idx !== -1) {
+                peers.splice(idx, 1);
+                peerData.splice(idx, 1);
+            }
+        });
+        c.on('error', err => {
+            if (err.name !== 'ECONNRESET') {
+                console.error(err);
+            }
         });
 
+        peers.push(c);
+    });
+    server.on('error', (err) => {
+        if (err.name === 'EADDRINUSE') {
+            console.log('Address in use, retrying...');
+            setTimeout(() => {
+                server.close();
+                server.listen(5000);
+            }, 1000);
+        } else {
+            throw err;
+        }
+    });
+    server.listen(5000, () => {
+        console.log(`time server bound on port 5000`);
     });
 }
 
-const handleIncomingData = (socket, data) => {
+const handleIncomingPeerData = (socket, data) => {
     let msg = JSON.parse(data.toString());
     console.log(msg);
-    if (msg?.type === 'timeServerResponse') {
-        let times = msg.data.times;
-        let curr = new Clock(mainTime.hours, mainTime.minutes, mainTime.seconds, mainTime.millis);
-        let sum_dif = curr._millis;
-        times.forEach(time => {
-            let cl1 = new Clock(time.hours, time.minutes, time.seconds, time.millis);
-            sum_dif = sum_dif + cl1._millis;
-        });
-        
-        const prom = Math.floor( sum_dif / (times.length + 1));
-        
-        times.forEach(time => {
-            let cl1 = new Clock(time.hours, time.minutes, time.seconds, time.millis);
-            let offset = prom - cl1.millis;
-            arrOffsets.push(offset);
-        });
-        console.log(arrOffsets);
-        peers[0].write(JSON.stringify(
-            { type: "offsetPeers",
-              data: {
-                  offsets: arrOffsets
-              }
-        }));
-        arrOffsets = [];
+    if (msg?.type === 'responseAllTimes') {
+        let serverTime = msg.data.serverTime;
+        let index = msg.data.index;
+        let clientTimes = msg.data.clientTimes;
 
-        mainClock.postMessage({
-            action: "offsetClock",
-            offset: prom - curr._millis,
-        });
+        peerData[index] = {
+            serverTime: serverTime,
+            clientTimes: clientTimes
+        }
+
+        if (!peerData.includes(undefined)) {
+            let curr = Clock.timeToMillis(mainTime);
+            let sum_dif = peerData.reduce((acc, data) => {
+                return acc + data.clientTimes.reduce((acc2, clock) => {
+                    return acc2 + Clock.timeToMillis(clock);
+                }, Clock.timeToMillis(data.serverTime));
+            }, curr);
+
+            let count = peerData.reduce((acc, data) => acc + data.clientTimes.length, peerData.length + 1);
+
+            let avg = Math.round(sum_dif / count);
+
+            for (let i = 0; i < peerData.length; i++) {
+                let data = peerData[i];
+                let clientOffsets = data.clientTimes.map(time => avg - Clock.timeToMillis(time));
+                peers[i].write(JSON.stringify({
+                    type: "offsetAllClocks",
+                    data: {
+                        serverOffset: avg - Clock.timeToMillis(data.serverTime),
+                        clientOffsets: clientOffsets
+                    }
+                }));
+            }
+            mainClockWorker.postMessage({
+                action: "offsetClock",
+                offset: avg - curr,
+            });
+        }
+
     }
 }
-const sendTimeRquest = () => {
-    setInterval(() => {
-        peers[0].write(JSON.stringify({ type: "timerequest" }));
-    }, secsInterval * 1000);
-}
 
-const bindButtons = ()=>{
-    document.querySelector('#btn-interval').addEventListener('click', ()=>{
+const bindButtons = () => {
+    document.querySelector('#btn-interval').addEventListener('click', () => {
         const interval = Number(document.querySelector('#in-interval').value);
-        if(!Number.isNaN(interval))
+        if (!Number.isNaN(interval))
             secsInterval = interval;
     });
 }

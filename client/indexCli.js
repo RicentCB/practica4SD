@@ -122,16 +122,15 @@ function configSocket() {
                 action: "offsetClock",
                 offset: msg.data.offset,
             });
-        } else if (msg?.type === 'timerequestunique'){
+        } else if (msg?.type === 'requestTime'){
             console.log("Time requested");
             socket.write(JSON.stringify({
-                type: "timeresponse",
+                type: "responseTime",
                 data: {
                     clock: thisClock
                 }
             }));
-        } 
-        console.log(data.toString());
+        }
     };
     let endCallback = () => {
         console.log("disconnected from server");
@@ -177,9 +176,9 @@ function findServer() {
             }
             // try to connect with any server
             let serverList = JSON.parse(data);
-            if (serverList?.peers?.length !== 0) {
-                let len = serverList?.peers?.length;
-                let sv = serverList.peers[i];
+            if (serverList?.servers?.length !== 0) {
+                let len = serverList?.servers?.length;
+                let sv = serverList.servers[i];
 
                 i = (i + 1) % len;
                 let sock = new net.Socket();
