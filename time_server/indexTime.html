@@ -12,6 +12,7 @@
     <!-- ------ CSS ------ -->
     <link rel="stylesheet" href="../common/css/basic.css">
     <link rel="stylesheet" href="../common/css/style.css">
+    <link rel="stylesheet" href="styleTime.css">
     <!-- --- PLUGIS JS --- -->
     <script src="https://kit.fontawesome.com/faf5c76420.js" crossorigin="anonymous"></script>
 
@@ -19,7 +20,7 @@
 
 <body>
     <!-- Contendor Principal -->
-    <main class="row-flex">
+    <main class="">
         <section class="flex-item-1">
             <h1>Servidor de Tiempo</h1>
             <div class="row-flex">
@@ -36,11 +37,20 @@
             </div>
         
         </section>
-        <!-- <aside class="log-clock-container flex-item-1">
-            <h2>Registro de Hora</h2>
-            <div class="log-clock">
+        <section style="margin-top: 50px;">
+            <h2>Intervalo de Sincronizacion</h2>
+            <div class="column-flex" style="background-color: rgb(24,24,24); padding: 15px 0;">
+                <div class="content-info row-flex">
+                    <h1 class="interval">
+                        <input type="number" value="5" id="in-interval" style="border: 2px solid #fff;">
+                    </h1>
+                    <h4 class="flex-item-1" style="margin-left: 30px;">Segundos</h4>
+                </div>
             </div>
-        </aside> -->
+            <div class="container-buttons flex-row" >
+                <a href="#" class="button green" id="btn-interval" style="width: 50%;">Modificar</a>
+            </div>
+        </section>
     </main>
     
     <!-- ======== SCRIPTS ======== -->

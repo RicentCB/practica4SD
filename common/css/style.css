@@ -144,7 +144,7 @@ main p {
     transition: all 0.25s ease-in;
 }
 
-.clock .content-info {
+.content-info {
     display: flex;
     flex-direction: row;
     height: calc(100% - 50px);
@@ -152,7 +152,7 @@ main p {
     justify-content: center;
 }
 
-.clock .content-info h1 {
+.content-info h1 {
     font-size: 5rem;
 }
 
@@ -207,7 +207,7 @@ main p {
     margin: 0;
 }
 
-.container-clock .clock input {
+.content-info input {
     font-family: 'Oswald', sans-serif;
     background: transparent;
     color: rgb(230, 230, 230);
@@ -217,7 +217,7 @@ main p {
     border: none;
 }
 
-.container-clock .clock input:focus {
+.content-info input:focus {
     color: white;
 }
 
